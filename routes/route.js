@@ -4,6 +4,7 @@ const authController = require('../controller/authController');
 const dotenv = require('dotenv').config();
 const middleware = require('../middleware/middleware');
 const socketAuthController = require('../controller/socketAuthController');
+const uploadUserProfile = require('../middleware/multer');
 require('../db/dbconfig');
 
 //User Routes
@@ -11,6 +12,7 @@ router.post(`${process.env.BASE_URL}/registeruser`, authController.registerUser)
 router.post(`${process.env.BASE_URL}/login`, authController.loginUser);
 router.get(`${process.env.BASE_URL}/getAllUser`, authController.getAllUser);
 router.get(`${process.env.BASE_URL}/getUser`, middleware.authenticateToken, authController.getUser);
+router.put(`${process.env.BASE_URL}/updateUser`, middleware.authenticateToken, uploadUserProfile, authController.updateUser);
 
 //message Routes
 router.get(`${process.env.BASE_URL}/getMessage`, middleware.authenticateToken, authController.getMessage);

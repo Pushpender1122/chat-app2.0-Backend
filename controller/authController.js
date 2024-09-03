@@ -3,6 +3,7 @@ const bcrypt = require('bcrypt');
 const jwt = require('jsonwebtoken');
 const dotenv = require('dotenv').config();
 const messageModel = require('../schema/message');
+const { uploadToCloudinary } = require('../utility/cloudinary');
 const JWT_SECRET = process.env.JWT_SECRET;
 module.exports.registerUser = async (req, res) => {
     console.log(req.body);
@@ -73,7 +74,7 @@ module.exports.loginUser = async (req, res) => {
 };
 module.exports.getAllUser = async (req, res) => {
     try {
-        const users = await User.find({}, { password: 0, email: 0, friends: 0, createAt: 0 });
+        const users = await User.find({}, { password: 0, friends: 0, createAt: 0 });
         res.status(200).json(users);
     } catch (error) {
         console.error('Error fetching users:', error);
@@ -89,8 +90,28 @@ module.exports.getUser = async (req, res) => {
         res.status(500).json({ message: 'Internal server error' });
     }
 }
-
-
+module.exports.updateUser = async (req, res) => {
+    try {
+        if (!req.file) {
+            return res.status(400).json({ message: 'Image is required' });
+        }
+        // console.log(req.file, req.file.filename);
+        const response = await uploadToCloudinary(req.file.path, req.file.filename);
+        if (!response || !response.url) {
+            throw new Error('Failed to upload to Cloudinary');
+        }
+        const user = await User.findById(req.user.userId);
+        user.username = req.body.username || user.username;
+        user.email = req.body.email || user.email;
+        user.description = req.body.description || user.description;
+        user.profileimg = response.url;
+        await user.save();
+        res.status(200).json({ message: 'User updated successfully' });
+    } catch (error) {
+        console.error('Error updating user:', error);
+        res.status(500).json({ message: 'Internal server error' });
+    }
+}
 //message controller
 module.exports.getMessage = async (req, res) => {
     try {
@@ -147,7 +168,7 @@ module.exports.removeFriend = async (req, res) => {
         }
         const user = await User.findById(req.user.userId);
         const friend = await User.findById(friendId);
-
+        // console.log(user, friend);
         if (!friend) {
             return res.status(404).json({ message: 'Friend not found' });
         }
@@ -177,7 +198,7 @@ module.exports.friendDetails = async (req, res) => {
         const user = await User.findById(req.user.userId)
             .populate({
                 path: 'requests',
-                select: 'profileimg username',
+                select: 'profileimg username email description',
             })
             .exec();
         res.status(200).json(user.requests);
