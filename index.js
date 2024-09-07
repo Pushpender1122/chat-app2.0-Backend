@@ -78,13 +78,13 @@ io.on("connection", (socket) => {
         // console.log(userSocketMap[userId]);
     });
 
-    // Handle private message
+    // Save selected user when user selects a friend to chat with
     socket.on("selectedUser", ({ SenderId, ReceiverId }) => {
         SelectedUser.set(SenderId, ReceiverId);
         console.log(SelectedUser);
     });
+    // Handle private message when user is online and friend is selected
     socket.on("private_message", async ({ toUserId, message, SenderID }) => {
-        // console.log("Private message from", "to", SenderID, toUserId, ":", message);
         if (await socketAuthController.checkFriend(toUserId, SenderID)) {
             socketAuthController.SaveMessageToDb(toUserId, SenderID, message);
             let ConnectedUser = SelectedUser.get(toUserId);
@@ -96,12 +96,10 @@ io.on("connection", (socket) => {
                 }
             }
         }
-        // console.log();
-
     });
+    //This is for friend request acknowledgement when user is online
     socket.on("friendRequest", async ({ ReceiverId }) => {
         const toSocketId = userSocketMap.get(ReceiverId);
-        // console.log("Friend request to socket ID:", toSocketId);
         console.log("ReceiverId:", ReceiverId);
         if (toSocketId) {
             const count = await socketAuthController.getFriendRequest(ReceiverId);
@@ -109,19 +107,40 @@ io.on("connection", (socket) => {
             io.to(toSocketId).emit("friendNotification", { count });
         }
     });
+    //This is for friend remove acknowledgement
     socket.on("friendRemove", async ({ senderId, ReceiverId }) => {
         const toSocketId = userSocketMap.get(ReceiverId);
-        // console.log("Friend request to socket ID:", toSocketId);
         if (toSocketId) {
             io.to(toSocketId).emit("FriendRemove", { senderId });
         }
     });
+    //This is for friend request accept acknowledgement
     socket.on("friendAccecptAck", async ({ ReceiverId }) => {
         const toSocketId = userSocketMap.get(ReceiverId);
-        // console.log("Friend request to socket ID:", toSocketId);
         console.log("friendAccecptAck", ReceiverId);
         if (toSocketId) {
             io.to(toSocketId).emit("FriendAcceptAck");
+        }
+    });
+    // Handle Voice call
+    socket.on("voice_call", ({ toUserId, peerId, senderId, senderName, senderProfileImg }) => {
+        const toSocketId = userSocketMap.get(toUserId);
+        console.log(toUserId, peerId);
+        if (toSocketId) {
+            io.to(toSocketId).emit("voice_call", { fromUserId: toUserId, peerId, senderId, senderName, senderProfileImg });
+        }
+    });
+    socket.on("user-connected", ({ toUserId, peerId, senderId }) => {
+        const toSocketId = userSocketMap.get(toUserId);
+        console.log("user", toUserId, peerId);
+        if (toSocketId) {
+            io.to(toSocketId).emit("user-connected", { fromUserId: toUserId, peerId, senderId });
+        }
+    });
+    socket.on("end-call", ({ toUserId }) => {
+        const toSocketId = userSocketMap.get(toUserId);
+        if (toSocketId) {
+            io.to(toSocketId).emit("end-call");
         }
     });
     socket.on("disconnect", () => {
