@@ -123,11 +123,11 @@ io.on("connection", (socket) => {
         }
     });
     // Handle Voice call
-    socket.on("voice_call", ({ toUserId, peerId, senderId, senderName, senderProfileImg }) => {
+    socket.on("voice_call", ({ toUserId, peerId, senderId, senderName, senderProfileImg, callType }) => {
         const toSocketId = userSocketMap.get(toUserId);
         console.log(toUserId, peerId);
         if (toSocketId) {
-            io.to(toSocketId).emit("voice_call", { fromUserId: toUserId, peerId, senderId, senderName, senderProfileImg });
+            io.to(toSocketId).emit("voice_call", { fromUserId: toUserId, peerId, senderId, senderName, senderProfileImg, callType });
         }
     });
     socket.on("user-connected", ({ toUserId, peerId, senderId }) => {
