@@ -45,7 +45,7 @@ const app = express();
 const server = http.createServer(app);
 const io = socket(server, {
     cors: {
-        origin: "http://localhost:3000", // Replace with your React app's URL
+        origin: ["http://localhost:3000", "http://192.168.92.10:3000"], // Replace with your React app's URL
         methods: ["GET", "POST"],
         credentials: true
     }
