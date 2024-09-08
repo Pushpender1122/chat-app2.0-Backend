@@ -12,6 +12,7 @@ router.post(`${process.env.BASE_URL}/registeruser`, authController.registerUser)
 router.post(`${process.env.BASE_URL}/login`, authController.loginUser);
 router.get(`${process.env.BASE_URL}/getAllUser`, authController.getAllUser);
 router.get(`${process.env.BASE_URL}/getUser`, middleware.authenticateToken, authController.getUser);
+router.get(`${process.env.BASE_URL}/logout`, middleware.authenticateToken, authController.logout);
 router.put(`${process.env.BASE_URL}/updateUser`, middleware.authenticateToken, uploadUserProfile, authController.updateUser);
 
 //message Routes

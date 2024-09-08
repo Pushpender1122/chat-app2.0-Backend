@@ -92,23 +92,37 @@ module.exports.getUser = async (req, res) => {
 }
 module.exports.updateUser = async (req, res) => {
     try {
-        if (!req.file) {
-            return res.status(400).json({ message: 'Image is required' });
-        }
-        // console.log(req.file, req.file.filename);
-        const response = await uploadToCloudinary(req.file.path, req.file.filename);
-        if (!response || !response.url) {
-            throw new Error('Failed to upload to Cloudinary');
-        }
         const user = await User.findById(req.user.userId);
         user.username = req.body.username || user.username;
         user.email = req.body.email || user.email;
         user.description = req.body.description || user.description;
-        user.profileimg = response.url;
+
+        if (req.file) {
+            const response = await uploadToCloudinary(req.file.path, req.file.filename);
+            if (!response || !response.url) {
+                throw new Error('Failed to upload to Cloudinary');
+            }
+            user.profileimg = response.url;
+        }
+
         await user.save();
         res.status(200).json({ message: 'User updated successfully' });
     } catch (error) {
         console.error('Error updating user:', error);
+        res.status(500).json({ message: 'Internal server error' });
+    }
+}
+
+module.exports.logout = async (req, res) => {
+    try {
+        // console.log(req.user);
+        const user = await User.findById(req.user.userId);
+        if (!user) {
+            return res.status(404).json({ message: 'User not found' });
+        }
+        res.status(200).json({ message: 'Logout successful' });
+    } catch (error) {
+        console.error('Error logging out user:', error);
         res.status(500).json({ message: 'Internal server error' });
     }
 }
