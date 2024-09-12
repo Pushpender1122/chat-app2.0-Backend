@@ -67,6 +67,7 @@ app.route("/").get((req, res) => {
 // Socket.IO Connection
 const userSocketMap = new Map(); // Using Map instead of Object can help avoid issues with object keys
 const SelectedUser = new Map();
+const callMap = new Map();
 io.on("connection", (socket) => {
     console.log("New client connected, socket ID:", socket.id);
 
@@ -124,6 +125,10 @@ io.on("connection", (socket) => {
     });
     // Handle Voice call
     socket.on("voice_call", ({ toUserId, peerId, senderId, senderName, senderProfileImg, callType }) => {
+        const userId = callMap.get(senderId);
+        if (!userId) {
+            callMap.set(senderId, socket.id);
+        }
         const toSocketId = userSocketMap.get(toUserId);
         console.log(toUserId, peerId);
         if (toSocketId) {
@@ -131,23 +136,39 @@ io.on("connection", (socket) => {
         }
     });
     socket.on("user-connected", ({ toUserId, peerId, senderId }) => {
-        const toSocketId = userSocketMap.get(toUserId);
-        console.log("user", toUserId, peerId);
+        const responceUserId = callMap.get(senderId);
+        if (!responceUserId) {
+            callMap.set(senderId, socket.id);
+        }
+        const toSocketId = callMap.get(toUserId);
+        console.log("user", toUserId, peerId, toSocketId);
         if (toSocketId) {
             io.to(toSocketId).emit("user-connected", { fromUserId: toUserId, peerId, senderId });
         }
     });
     socket.on("end-call", ({ toUserId }) => {
-        const toSocketId = userSocketMap.get(toUserId);
+        const toSocketId = callMap.get(toUserId);
+        console.log("End call", toUserId, toSocketId);
         if (toSocketId) {
             io.to(toSocketId).emit("end-call");
         }
     });
     socket.on("disconnect", () => {
         // Remove user from the map when they disconnect
+        let disconnectedUserId;
         for (const [key, value] of userSocketMap.entries()) {
             if (value === socket.id) {
+                disconnectedUserId = key;
                 userSocketMap.delete(key);
+                console.log("User disconnected with ID:", key);
+                break;
+            }
+        }
+        // Remove user from the selected user map when they disconnect
+        SelectedUser.delete(disconnectedUserId);
+        for (const [key, value] of callMap.entries()) {
+            if (value === socket.id) {
+                callMap.delete(key);
                 console.log("User disconnected with ID:", key);
                 break;
             }
