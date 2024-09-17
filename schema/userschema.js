@@ -38,5 +38,15 @@ const userSchema = new Schema({
         type: String,
         default: "Hey there I am using RealTalk"
     },
+    messageStatus: {
+        type: [{
+            status: Boolean,
+            userId: mongoose.Schema.Types.ObjectId
+        }],
+        default: {
+            status: false,
+            userId: null
+        }
+    },
 });
 module.exports = mongoose.model('User', userSchema);

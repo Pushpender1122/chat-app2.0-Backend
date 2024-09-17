@@ -2,7 +2,7 @@ const messageModel = require('../schema/message');
 const User = require('../schema/userschema');
 module.exports.SaveMessageToDb = async (SenderId, fromUserId, message) => {
     try {
-        console.log('Saving message to DB:', SenderId, fromUserId, message);
+        // console.log('Saving message to DB:', SenderId, fromUserId, message);
         const newMessage = new messageModel({
             SenderId,
             fromUserId,
@@ -37,5 +37,39 @@ module.exports.checkFriend = async (ReceiverId, SenderId) => {
     }
     catch (error) {
         console.error('Error fetching friend request:', error);
+    }
+}
+module.exports.saveMessageStatus = async (ReceiverId, SenderId) => {
+    try {
+        const user = await User.findById(ReceiverId);
+        const messageStatus = user.messageStatus;
+        const index = messageStatus.findIndex(element => element.userId == SenderId);
+        if (index > -1) {
+            messageStatus[index].status = true;
+        }
+        else {
+            messageStatus.push({ status: true, userId: SenderId });
+        }
+        await user.save();
+    }
+    catch (error) {
+        console.error('Error saving message status:', error);
+    }
+}
+
+module.exports.changeMessageStatus = async (ReceiverId, SenderId) => {
+    try {
+        console.log('Changing message status:', ReceiverId, SenderId);
+        const user = await User.findById(ReceiverId);
+
+        const messageStatus = user.messageStatus;
+        const index = messageStatus.findIndex(element => element.userId == SenderId);
+        if (index > -1) {
+            messageStatus[index].status = false;
+        }
+        await user.save();
+    }
+    catch (error) {
+        console.error('Error saving message status:', error);
     }
 }

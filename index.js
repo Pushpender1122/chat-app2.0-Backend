@@ -96,7 +96,19 @@ io.on("connection", (socket) => {
                     io.to(toSocketId).emit("private_message", { fromUserId: socket.id, message });
                 }
             }
+            else {
+                await socketAuthController.saveMessageStatus(toUserId, SenderID);
+                const toSocketId = userSocketMap.get(toUserId);
+                if (toSocketId) {
+                    io.to(toSocketId).emit("messageNotification", { SenderID, status: true });
+                }
+                //send the notification to the user
+            }
         }
+    });
+    // Handle message status when user is click on the chat 
+    socket.on("messageStatus", async ({ SenderID, ReceiverId }) => {
+        await socketAuthController.changeMessageStatus(SenderID, ReceiverId);
     });
     //This is for friend request acknowledgement when user is online
     socket.on("friendRequest", async ({ ReceiverId }) => {
