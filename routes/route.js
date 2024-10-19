@@ -10,6 +10,7 @@ require('../db/dbconfig');
 //User Routes
 router.post(`${process.env.BASE_URL}/registeruser`, authController.registerUser);
 router.post(`${process.env.BASE_URL}/login`, authController.loginUser);
+router.post(`${process.env.BASE_URL}/templogin`, authController.tempAccount);
 router.get(`${process.env.BASE_URL}/getAllUser`, authController.getAllUser);
 router.get(`${process.env.BASE_URL}/getUser`, middleware.authenticateToken, authController.getUser);
 router.get(`${process.env.BASE_URL}/logout`, middleware.authenticateToken, authController.logout);

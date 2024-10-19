@@ -72,6 +72,43 @@ module.exports.loginUser = async (req, res) => {
         res.status(500).json({ message: 'Internal server error' });
     }
 };
+
+async function generateRandomName() {
+    return new Promise((resolve, reject) => {
+        const username = 'Guest' + Math.floor(Math.random() * 10000);
+        const email = username + '@gmail.com';
+        const password = '123456';
+        resolve({ username, email, password });
+    });
+
+}
+module.exports.tempAccount = async (req, res) => {
+    try {
+        const { username, email, password } = await generateRandomName();
+        const salt = await bcrypt.genSalt(10);
+        console.log(username, email, password, salt);
+        const hashedPassword = await bcrypt.hash(password, salt);
+        const newUser = new User({
+            username,
+            password: hashedPassword,
+            email: email
+        });
+        await newUser.save();
+        // Set a timeout to delete the user after 1 minute
+        setTimeout(async () => {
+            await User.findByIdAndDelete(newUser._id);
+            console.log(`Temporary user ${newUser.username} deleted after 1 day`);
+        }, 60000 * 60 * 24);
+
+        const token = jwt.sign({ userId: newUser._id, email: newUser.email }, JWT_SECRET, { expiresIn: '1d' });
+        // Send a success response
+        res.status(200).json({ message: 'Login successful', token });
+    } catch (error) {
+        console.error('Error logging in user:', error);
+        res.status(500).json({ message: 'Internal server error' });
+    }
+}
+
 module.exports.getAllUser = async (req, res) => {
     try {
         const users = await User.find({}, { password: 0, friends: 0, createAt: 0 });
