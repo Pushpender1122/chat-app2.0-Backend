@@ -101,7 +101,17 @@ io.on("connection", (socket) => {
             io.to(socket.id).emit("isActive", { status: false });
         }
     });
-
+    // Handle typing status
+    socket.on("isTyping", ({ ReceiverId, SenderId }) => {
+        const toSocketId = userSocketMap.get(ReceiverId);
+        if (toSocketId) {
+            const isTyping = SelectedUser.get(ReceiverId);
+            if (isTyping == SenderId) {
+                io.to(toSocketId).emit("isTyping", { status: 'Typing...' });
+            }
+        }
+    });
+    // Handle file upload
     socket.on('upload-file', async (fileData, callback) => {
         try {
             const result = await uploadToCloudinary(fileData.file, fileData.name, 'file');
