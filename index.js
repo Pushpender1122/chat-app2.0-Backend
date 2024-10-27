@@ -43,12 +43,15 @@ const socket = require("socket.io");
 const socketAuthController = require("./controller/socketAuthController");
 const app = express();
 const server = http.createServer(app);
+const fs = require("fs");
+// const redis = require("./services/redis");
 const io = socket(server, {
     cors: {
         origin: ["http://localhost:3000", "http://192.168.92.10:3000", "https://realtalks.netlify.app"], // Replace with your React app's URL
         methods: ["GET", "POST"],
         credentials: true
-    }
+    },
+    maxHttpBufferSize: 1e8
 });
 
 // Middleware
@@ -57,6 +60,7 @@ app.use(express.json());
 
 // Routes
 const router = require("./routes/route");
+const { uploadToCloudinary } = require("./utility/cloudinary");
 app.use(router);
 
 // Test Route
@@ -84,16 +88,30 @@ io.on("connection", (socket) => {
         SelectedUser.set(SenderId, ReceiverId);
         console.log(SelectedUser);
     });
+    socket.on('upload-file', async (fileData, callback) => {
+        try {
+            const result = await uploadToCloudinary(fileData.file, fileData.name, 'file');
+            callback({ url: result.secure_url });
+        } catch (error) {
+            console.error('Cloudinary upload error:', error);
+            callback({ error: 'Upload failed' });
+        }
+    });
     // Handle private message when user is online and friend is selected
-    socket.on("private_message", async ({ toUserId, message, SenderID }) => {
+    socket.on("private_message", async ({ toUserId, message, SenderID, fileType }) => {
+        // if (message.file) {
+        //     const fileexe = message.fileName.split('.').pop();
+        //     fs.writeFileSync('./temp/' + message.fileName + '.' + fileexe, message.file);
+        // }
         if (await socketAuthController.checkFriend(toUserId, SenderID)) {
-            socketAuthController.SaveMessageToDb(toUserId, SenderID, message);
+            socketAuthController.SaveMessageToDb(toUserId, SenderID, message, fileType);
+            // redis.storeValue(toUserId, SenderID, message);
             let ConnectedUser = SelectedUser.get(toUserId);
             if (ConnectedUser == SenderID) {
                 const toSocketId = userSocketMap.get(toUserId);
                 // console.log("To socket ID:", toSocketId);
                 if (toSocketId) {
-                    io.to(toSocketId).emit("private_message", { fromUserId: socket.id, message });
+                    io.to(toSocketId).emit("private_message", { fromUserId: socket.id, message, fileType });
                 }
             }
             else {
