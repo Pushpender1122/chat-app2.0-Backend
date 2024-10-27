@@ -1,12 +1,13 @@
 const messageModel = require('../schema/message');
 const User = require('../schema/userschema');
-module.exports.SaveMessageToDb = async (SenderId, fromUserId, message) => {
+module.exports.SaveMessageToDb = async (SenderId, fromUserId, message, filetype) => {
     try {
         // console.log('Saving message to DB:', SenderId, fromUserId, message);
         const newMessage = new messageModel({
             SenderId,
             fromUserId,
-            message
+            message,
+            filetype
         });
         await newMessage.save();
     } catch (error) {
