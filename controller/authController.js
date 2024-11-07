@@ -166,27 +166,27 @@ module.exports.logout = async (req, res) => {
 //message controller
 module.exports.getMessage = async (req, res) => {
     try {
-        const SenderId = req.query.SenderId;
         const fromUserId = req.query.ReceiverId;
-        const limit = 20
-        let skip = parseInt(req.query.skip) || 20;
-        console.log(skip);
-        const total = await messageModel.countDocuments({
-            $or: [
-                { SenderId, fromUserId },
-                { SenderId: fromUserId, fromUserId: SenderId }
-            ]
-        });
-        if (skip > total) {
-            skip = 0;
-        }
-        else {
-            skip = total - skip;
-        }
+        const SenderId = req.user.userId;
+        // const limit = 20
+        // let skip = parseInt(req.query.skip) || 20;
+        // console.log(skip);
+        // const total = await messageModel.countDocuments({
+        //     $or: [
+        //         { SenderId, fromUserId },
+        //         { SenderId: fromUserId, fromUserId: SenderId }
+        //     ]
+        // });
+        // if (skip > total) {
+        //     skip = 0;
+        // }
+        // else {
+        //     skip = total - skip;
+        // }
 
-        console.log(total, skip);
+        // console.log(total, skip);
         // console.log(req.query);
-        if (!SenderId || !fromUserId) {
+        if (!fromUserId) {
             return res.status(400).json({ message: 'SenderId and ReceiverId are required' });
         }
         let messages = await messageModel.find({
@@ -194,9 +194,10 @@ module.exports.getMessage = async (req, res) => {
                 { SenderId, fromUserId },
                 { SenderId: fromUserId, fromUserId: SenderId }
             ]
-        }).skip(skip);
-        messages = messages.slice(0, 20);
-        res.status(200).json({ messages, total });
+        });
+        // messages = messages.slice(0, 20);
+        // res.status(200).json({ messages, total });
+        res.status(200).json(messages);
     } catch (error) {
         console.error('Error fetching messages:', error);
         res.status(500).json({ message: 'Internal server error' });
