@@ -16,8 +16,14 @@ router.get(`${process.env.BASE_URL}/getUser`, middleware.authenticateToken, auth
 router.get(`${process.env.BASE_URL}/logout`, middleware.authenticateToken, authController.logout);
 router.put(`${process.env.BASE_URL}/updateUser`, middleware.authenticateToken, uploadUserProfile, authController.updateUser);
 
+//keys
+router.post(`${process.env.BASE_URL}/key`, middleware.authenticateToken, authController.keys);
 //message Routes
 router.get(`${process.env.BASE_URL}/getMessage`, middleware.authenticateToken, authController.getMessage);
+// for e2ee encryption (testing)
+// router.post(`${process.env.BASE_URL}/publicKey`, middleware.authenticateToken, authController.storeKeys);
+// router.get(`${process.env.BASE_URL}/keys`, middleware.authenticateToken, authController.getAesKey);
+// router.post(`${process.env.BASE_URL}/keys`, middleware.authenticateToken, authController.storeAESKey);
 // router.post(`${process.env.BASE_URL}/saveMessage`, middleware.authenticateToken, socketAuthController.SaveMessageToDb);
 //friend Routes
 router.post(`${process.env.BASE_URL}/addFriend`, middleware.authenticateToken, authController.addFriend);

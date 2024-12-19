@@ -5,6 +5,9 @@ const dotenv = require('dotenv').config();
 const messageModel = require('../schema/message');
 const { uploadToCloudinary } = require('../utility/cloudinary');
 const JWT_SECRET = process.env.JWT_SECRET;
+const forge = require('node-forge');
+const aesKeyModel = require('../schema/aesKeys');
+const { generateKeys } = require('../keys/generateKeys');
 module.exports.registerUser = async (req, res) => {
     console.log(req.body);
     try {
@@ -203,7 +206,110 @@ module.exports.getMessage = async (req, res) => {
         res.status(500).json({ message: 'Internal server error' });
     }
 }
+//keys aesKey
 
+module.exports.keys = async (req, res) => {
+    try {
+
+        const user1_id = req.user.userId;
+        const user2_id = req.body.friendId;
+        const pubKey = req.body.publicKey;
+        if (!user2_id || !pubKey) {
+            return res.status(400).json({ message: 'Friend ID and public key are required' });
+        }
+        var key = await aesKeyModel.findOne({
+            $or: [
+                { user1: user1_id, user2: user2_id },
+                { user2: user1_id, user1: user2_id }
+            ]
+        })
+        console.log(key);
+        if (!key) {
+            await generateKeys(user1_id, user2_id);
+            key = await aesKeyModel.findOne({
+                $or: [
+                    { user1: user1_id, user2: user2_id },
+                    { user2: user1_id, user1: user2_id }
+                ]
+            })
+        }
+        const encrypted_aes_key = forge.pki.publicKeyFromPem(pubKey).encrypt(key?.aesKey, 'RSA-OAEP');
+        const encrypted_iv = forge.pki.publicKeyFromPem(pubKey).encrypt(key?.iv, 'RSA-OAEP');
+        return res.status(200).json({ aesKey: forge.util.encode64(encrypted_aes_key), iv: forge.util.encode64(encrypted_iv) });
+
+    } catch (error) {
+        console.error('Error fetching messages:', error);
+        res.status(500).json({ message: 'Internal server error' });
+    }
+}
+
+// For testing E2EE
+// module.exports.storeKeys = async (req, res) => {
+//     try {
+//         const { publicKeyPem } = req.body;
+//         if (!publicKeyPem) {
+//             return res.status(400).json({ message: 'Public key is required' });
+//         }
+//         const isKeyExist = await publicKey.findOne({ userId: req.user.userId });
+//         if (isKeyExist) {
+//             publicKey.findOneAndUpdate({ userId: req.user.userId }, { publicKeyPem }, { new: true });
+//             return res.status(200).json({ message: 'Key saved successfully' });
+//         }
+//         const newKey = new publicKey({
+//             userId: req.user.userId,
+//             publicKeyPem,
+//         });
+//         await newKey.save();
+//         res.status(200).json({ message: 'Key saved successfully' });
+//     } catch (error) {
+//         console.error('Error fetching messages:', error);
+//         res.status(500).json({ message: 'Internal server error' });
+//     }
+// }
+// module.exports.getAesKey = async (req, res) => {
+//     try {
+//         const { receiverId } = req.query;
+//         const userId = req.user.userId;
+//         if (!receiverId) {
+//             return res.status(400).json({ message: 'Receiver ID is required' });
+//         }
+//         const aesKey = await aesKeyModel.findOne({ userId: receiverId, receiverId: userId });
+//         if (!aesKey) {
+//             return res.status(404).json({ message: 'AES key not found' });
+//         }
+//         res.status(200).json({ aesKey });
+//     } catch (error) {
+//         console.error('Error fetching keys:', error);
+//         res.status(500).json({ message: 'Internal server error' });
+//     }
+// };
+// module.exports.storeAESKey = async (req, res) => {
+//     try {
+//         const { receiverId, aesKey, iv } = req.body;
+//         const userId = req.user.userId;
+//         if (!receiverId || !aesKey || !iv) {
+//             return res.status(400).json({ message: 'Receiver ID, AES key and IV are required' });
+//         }
+//         const isKeyExist = await aesKeyModel.findOne({ receiverId, userId });
+//         if (isKeyExist) {
+//             isKeyExist.aesKey = aesKey;
+//             isKeyExist.iv = iv;
+//             await isKeyExist.save();
+//             return res.status(200).json({ message: 'AES key saved successfully' });
+//         }
+//         const newKey = new aesKeyModel({
+//             receiverId,
+//             userId,
+//             aesKey,
+//             iv,
+//         });
+//         await newKey.save();
+//         res.status(200).json({ message: 'AES key saved successfully' });
+//     } catch (error) {
+//         console.error('Error storing AES key:', error);
+//         res.status(500).json({ message: 'Internal server error' });
+//     }
+// }
 //friend controller
 module.exports.addFriend = async (req, res) => {
     try {
@@ -251,8 +357,18 @@ module.exports.removeFriend = async (req, res) => {
 
         friend.friends = friend.friends.filter(f => f.toString() !== user._id.toString());
 
-        console.log(user, friend);
-
+        await aesKeyModel.deleteOne({
+            $or: [
+                { user1: user._id, user2: friendId },
+                { user1: friendId, user2: user._id }
+            ]
+        });
+        await messageModel.deleteMany({
+            $or: [
+                { SenderId: user._id, fromUserId: friendId },
+                { SenderId: friendId, fromUserId: user._id }
+            ]
+        });
         await user.save();
         await friend.save();
 
@@ -294,6 +410,7 @@ module.exports.accecptFriendRequest = async (req, res) => {
         user.friends.push(friendId);
         friend.friends.push(user._id);
         user.requests = user.requests.filter((request) => request.toString() !== friendId);
+        await generateKeys(user._id, friendId);
         await user.save();
         await friend.save();
         res.status(200).json({ message: 'Friend request accepted' });
