@@ -94,13 +94,24 @@ module.exports.tempAccount = async (req, res) => {
         const newUser = new User({
             username,
             password: hashedPassword,
-            email: email
+            email: email,
+            friends: ['66dd98f32234776d50d79780']
         });
         await newUser.save();
+        const mainUser = await User.findById('66dd98f32234776d50d79780');
+        mainUser.friends.push(newUser._id);
+        await mainUser.save();
         // Set a timeout to delete the user after 1 minute
         setTimeout(async () => {
-            await User.findByIdAndDelete(newUser._id);
-            console.log(`Temporary user ${newUser.username} deleted after 1 day`);
+            try {
+                await User.findByIdAndDelete(newUser._id);
+                console.log(`Temporary user ${newUser.username} deleted after 1 day`);
+                mainUser.friends.filter(f => f.toString() !== newUser._id.toString());
+                await mainUser.save();
+            } catch (error) {
+                console.error('Error deleting temporary user:', error);
+            }
+
         }, 60000 * 60 * 24);
 
         const token = jwt.sign({ userId: newUser._id, email: newUser.email }, JWT_SECRET, { expiresIn: '1d' });
