@@ -101,13 +101,29 @@ module.exports.tempAccount = async (req, res) => {
         const mainUser = await User.findById('66dd98f32234776d50d79780');
         mainUser.friends.push(newUser._id);
         await mainUser.save();
-        // Set a timeout to delete the user after 1 minute
+        // Set a timeout to delete the user after 1 minutex
         setTimeout(async () => {
             try {
+                const friendList = await User.findOne(newUser._id);
+                for (let i = 0; i < friendList.friends.length; i++) {
+                    const friend = await User.findById(friendList.friends[i]);
+                    friend.friends = friend.friends.filter(f => f.toString() !== newUser._id.toString());
+                    await friend.save();
+                }
+
                 await User.findByIdAndDelete(newUser._id);
                 console.log(`Temporary user ${newUser.username} deleted after 1 day`);
                 mainUser.friends.filter(f => f.toString() !== newUser._id.toString());
                 await mainUser.save();
+                await messageModel.deleteMany({
+                    $or: [
+                        { SenderId: newUser._id },
+                        { fromUserId: newUser._id }
+                    ]
+                });
+
+
+
             } catch (error) {
                 console.error('Error deleting temporary user:', error);
             }
