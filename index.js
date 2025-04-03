@@ -69,7 +69,7 @@ app.route("/").get((req, res) => {
 
 // Socket.IO Connection
 const userSocketMap = new Map(); // Using Map instead of Object can help avoid issues with object keys
-const SelectedUser = new Map();
+const SelectedUser = new Map(); // This map will store the selected user for each sender
 const callMap = new Map();
 io.on("connection", (socket) => {
     // console.log("New client connected, socket ID:", socket.id);
@@ -80,6 +80,7 @@ io.on("connection", (socket) => {
         // console.log("list", SelectedUser); 
         console.log("User registered with ID:", userId);
         io.emit("isActive", { userId });
+        io.emit('allUserStatus', { userId });
         // // console.log(userSocketMap[userId]);
     });
 
@@ -101,6 +102,16 @@ io.on("connection", (socket) => {
             io.to(socket.id).emit("isActive", { status: false });
         }
     });
+    //handle All user online status 
+    socket.on("allUserStatus", async () => {
+        let currentUsers = [];
+        for (const [key, value] of userSocketMap.entries()) {
+            currentUsers.push(key)
+        }
+        io.to(socket.id).emit("allUserStatus", { currentUsers });
+        // console.log("All user online status:", currentUsers);
+    }
+    );
     // Handle typing status
     socket.on("isTyping", ({ ReceiverId, SenderId }) => {
         const toSocketId = userSocketMap.get(ReceiverId);
@@ -139,13 +150,13 @@ io.on("connection", (socket) => {
                 }
             }
             else {
-                await socketAuthController.saveMessageStatus(toUserId, SenderID);
                 const toSocketId = userSocketMap.get(toUserId);
                 if (toSocketId) {
                     io.to(toSocketId).emit("messageNotification", { SenderID, status: true });
                 }
                 //send the notification to the user
             }
+            await socketAuthController.saveMessageStatus(toUserId, SenderID);
         }
     });
     // Handle message status when user is click on the chat 
@@ -219,6 +230,7 @@ io.on("connection", (socket) => {
             }
         }
         io.emit("isActive", { disconnectedUserId })
+        io.emit('allUserStatus', { disconnectedUserId });
         // Remove user from the selected user map when they disconnect
         // const ConnectedUser = SelectedUser.get({ data: disconnectedUserId });
 
@@ -233,7 +245,13 @@ io.on("connection", (socket) => {
         // console.log("Client disconnected, socket ID:", socket.id);
     });
 });
-
+// app.get("/test", (req, res) => {
+//     const mapToArray = (map) => {
+//         return Array.from(map.entries());
+//     };
+//     let a = mapToArray(userSocketMap);
+//     res.json({ a });
+// })
 // Start the server on a single port
 const port = process.env.PORT || 4500;
 server.listen(port, () => {

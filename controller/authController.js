@@ -98,9 +98,13 @@ module.exports.tempAccount = async (req, res) => {
             friends: ['66dd98f32234776d50d79780']
         });
         await newUser.save();
-        const mainUser = await User.findById('66dd98f32234776d50d79780');
-        mainUser.friends.push(newUser._id);
-        await mainUser.save();
+        try {
+            const mainUser = await User.findById('66dd98f32234776d50d79780');
+            mainUser.friends.push(newUser._id);
+            await mainUser.save();
+        } catch (error) {
+            console.error('Error adding friend:', error);
+        }
         // Set a timeout to delete the user after 1 minutex
         setTimeout(async () => {
             try {
@@ -356,7 +360,22 @@ module.exports.addFriend = async (req, res) => {
             return res.status(400).json({ message: 'Friend request already sent' });
         }
         friend.requests.push(user._id);
+
+        // Initialize messageStatus arrays if they don't exist
+        if (!friend.messageStatus) friend.messageStatus = [];
+        if (!user.messageStatus) user.messageStatus = [];
+        // console.log(user, friend);
+        // throw new Error('Test error');
+        if (!friend.messageStatus.some(status => status.userId && status.userId.toString() === user._id.toString())) {
+            friend.messageStatus.push({ status: false, userId: user._id });
+        }
+
+        // Check if messageStatus entry already exists for the friend
+        if (!user.messageStatus.some(status => status.userId && status.userId.toString() === friendId.toString())) {
+            user.messageStatus.push({ status: false, userId: friendId });
+        }
         await friend.save();
+        await user.save();
         res.status(200).json({ message: 'Friend added successfully' });
     } catch (error) {
         console.error('Error adding friend:', error);

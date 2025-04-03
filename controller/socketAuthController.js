@@ -16,7 +16,6 @@ module.exports.SaveMessageToDb = async (SenderId, fromUserId, message, filetype)
 }
 module.exports.getFriendRequest = async (ReceiverId) => {
     try {
-
         const user = await User.findById(ReceiverId).select('requests');
 
         let count = 0;
@@ -42,22 +41,32 @@ module.exports.checkFriend = async (ReceiverId, SenderId) => {
 }
 module.exports.saveMessageStatus = async (ReceiverId, SenderId) => {
     try {
-        const user = await User.findById(ReceiverId);
-        const messageStatus = user.messageStatus;
-        const index = messageStatus.findIndex(element => element.userId == SenderId);
-        if (index > -1) {
-            messageStatus[index].status = true;
-        }
-        else {
-            messageStatus.push({ status: true, userId: SenderId });
-        }
-        await user.save();
+        await saveStatusGenericFunction(ReceiverId, SenderId);
+        await saveStatusGenericFunction(SenderId, ReceiverId, 'onlyTime');
     }
     catch (error) {
         console.error('Error saving message status:', error);
     }
 }
-
+async function saveStatusGenericFunction(id1, id2, saveType) {
+    const user1 = await User.findById(id1);
+    const user1MessageStatus = user1.messageStatus;
+    const index1 = user1MessageStatus.findIndex(element => element.userId == id2);
+    if (index1 > -1) {
+        if (saveType == 'onlyTime') {
+            user1MessageStatus[index1].updatedAt = Date.now();
+            user1MessageStatus[index1].messageCount += 1;
+            await user1.save();
+            return;
+        }
+        user1MessageStatus[index1].status = true;
+        user1MessageStatus[index1].updatedAt = Date.now();
+        user1MessageStatus[index1].messageCount += 1;
+    } else {
+        user1MessageStatus.push({ status: true, userId: id2 });
+    }
+    await user1.save();
+}
 module.exports.changeMessageStatus = async (ReceiverId, SenderId) => {
     try {
         console.log('Changing message status:', ReceiverId, SenderId);
@@ -67,6 +76,8 @@ module.exports.changeMessageStatus = async (ReceiverId, SenderId) => {
         const index = messageStatus.findIndex(element => element.userId == SenderId);
         if (index > -1) {
             messageStatus[index].status = false;
+            messageStatus[index].messageCount = 0
+            // messageStatus[index].updatedAt = Date.now();
         }
         await user.save();
     }

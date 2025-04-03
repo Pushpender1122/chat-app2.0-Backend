@@ -40,13 +40,24 @@ const userSchema = new Schema({
     },
     messageStatus: {
         type: [{
-            status: Boolean,
-            userId: mongoose.Schema.Types.ObjectId
+            status: {
+                type: Boolean,
+                default: false
+            },
+            messageCount: {
+                type: Number,
+                default: 0
+            },
+            userId: mongoose.Schema.Types.ObjectId,
+            createdAt: {
+                type: Date,
+                default: Date.now
+            },
+            updatedAt: {
+                type: Date,
+                default: Date.now
+            }
         }],
-        default: {
-            status: false,
-            userId: null
-        }
     },
 });
 module.exports = mongoose.model('User', userSchema);
