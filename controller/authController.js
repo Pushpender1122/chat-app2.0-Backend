@@ -8,6 +8,7 @@ const JWT_SECRET = process.env.JWT_SECRET;
 const forge = require('node-forge');
 const aesKeyModel = require('../schema/aesKeys');
 const { generateKeys } = require('../keys/generateKeys');
+const { saveLogs } = require('../utility/logs');
 module.exports.registerUser = async (req, res) => {
     console.log(req.body);
     try {
@@ -64,7 +65,8 @@ module.exports.loginUser = async (req, res) => {
         if (!isMatch) {
             return res.status(400).json({ message: 'Invalid email or password' });
         }
-
+        // For logs
+        await saveLogs(req, email, user._id);
         // Generate JWT token
         const token = jwt.sign({ userId: user._id, email: user.email }, JWT_SECRET, { expiresIn: '30d' });
 
@@ -105,6 +107,8 @@ module.exports.tempAccount = async (req, res) => {
         } catch (error) {
             console.error('Error adding friend:', error);
         }
+        // For logs
+        await saveLogs(req, email, newUser._id);
         // Set a timeout to delete the user after 1 minutex
         setTimeout(async () => {
             try {
