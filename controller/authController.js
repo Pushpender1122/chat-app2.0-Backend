@@ -206,21 +206,21 @@ module.exports.getMessage = async (req, res) => {
     try {
         const fromUserId = req.query.ReceiverId;
         const SenderId = req.user.userId;
-        // const limit = 20
-        // let skip = parseInt(req.query.skip) || 20;
-        // console.log(skip);
-        // const total = await messageModel.countDocuments({
-        //     $or: [
-        //         { SenderId, fromUserId },
-        //         { SenderId: fromUserId, fromUserId: SenderId }
-        //     ]
-        // });
-        // if (skip > total) {
-        //     skip = 0;
-        // }
-        // else {
-        //     skip = total - skip;
-        // }
+        const limit = 20
+        let skip = parseInt(req.query.skip) || 20;
+        console.log(skip);
+        const total = await messageModel.countDocuments({
+            $or: [
+                { SenderId, fromUserId },
+                { SenderId: fromUserId, fromUserId: SenderId }
+            ]
+        });
+        if (skip > total) {
+            skip = 0;
+        }
+        else {
+            skip = total - skip;
+        }
 
         // console.log(total, skip);
         // console.log(req.query);
@@ -233,9 +233,9 @@ module.exports.getMessage = async (req, res) => {
                 { SenderId: fromUserId, fromUserId: SenderId }
             ]
         });
-        // messages = messages.slice(0, 20);
-        // res.status(200).json({ messages, total });
-        res.status(200).json(messages);
+        messages = messages.slice(0, 20);
+        res.status(200).json({ messages, total });
+        // res.status(200).json(messages);
     } catch (error) {
         console.error('Error fetching messages:', error);
         res.status(500).json({ message: 'Internal server error' });
